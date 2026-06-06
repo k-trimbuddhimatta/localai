@@ -1,0 +1,15 @@
+# Environment — never commit secrets
+.env
+.env.*
+*.env
+!.env.example
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Editors
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
