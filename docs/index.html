@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LocalAI Stack — Local LLM infrastructure for developers</title>
+  <meta name="description" content="Unified proxy for local (Ollama) and cloud LLMs. Offline-first. One endpoint for Claude, GPT-4o, Gemini and local models. Works with Cline and any OpenAI-compatible client.">
+  <meta property="og:title" content="LocalAI Stack">
+  <meta property="og:description" content="Local AI infrastructure for developers. Unified proxy for Ollama + Anthropic + OpenAI + Gemini.">
+  <meta property="og:image" content="https://k-trimbuddhimatta.github.io/localai/og.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0a0f1e;
+      --bg-card:     #0d1628;
+      --bg-code:     #060c18;
+      --accent:      #06b6d4;
+      --accent-2:    #3b82f6;
+      --green:       #22c55e;
+      --purple:      #a78bfa;
+      --orange:      #f97316;
+      --text:        #e2e8f0;
+      --text-muted:  #94a3b8;
+      --text-dim:    #475569;
+      --border:      rgba(6,182,212,0.15);
+      --border-md:   rgba(6,182,212,0.3);
+      --radius:      12px;
+      --radius-sm:   8px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Layout helpers ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    .section    { padding: 96px 0; }
+    .section-sm { padding: 64px 0; }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10,15,30,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto; padding: 0 24px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px;
+      color: #fff; text-decoration: none;
+    }
+    .nav-logo .acc { color: var(--accent); }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a {
+      color: var(--text-muted); text-decoration: none; font-size: 0.9rem;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-gh {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 6px;
+      border: 1px solid var(--border-md);
+      color: var(--text) !important;
+      font-size: 0.85rem !important;
+      transition: border-color .2s, background .2s !important;
+    }
+    .nav-gh:hover { border-color: var(--accent) !important; background: rgba(6,182,212,0.08) !important; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 160px 0 96px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 800px;
+      background: radial-gradient(ellipse, rgba(6,182,212,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 4px 14px; border-radius: 999px;
+      border: 1px solid var(--border-md);
+      color: var(--accent); font-size: 0.8rem; font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 28px;
+      background: rgba(6,182,212,0.06);
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+    }
+    h1 {
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      color: #fff;
+    }
+    h1 .acc { color: var(--accent); }
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 36px;
+      font-weight: 400;
+    }
+    .hero-actions {
+      display: flex; justify-content: center; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      padding: 12px 28px; border-radius: var(--radius-sm);
+      background: var(--accent); color: #000;
+      font-weight: 600; font-size: 0.95rem; text-decoration: none;
+      transition: opacity .2s, transform .2s;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-outline {
+      padding: 12px 28px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-md); color: var(--text);
+      font-weight: 500; font-size: 0.95rem; text-decoration: none;
+      transition: border-color .2s, background .2s;
+    }
+    .btn-outline:hover { border-color: var(--accent); background: rgba(6,182,212,0.06); }
+    .hero-chips {
+      display: flex; justify-content: center; gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 40px;
+    }
+    .chip {
+      font-size: 0.8rem; color: var(--text-dim);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .chip span { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 2rem; font-weight: 700; letter-spacing: -0.5px;
+      color: #fff; margin-bottom: 12px;
+    }
+    .section-sub {
+      font-size: 1rem; color: var(--text-muted); margin-bottom: 48px;
+    }
+
+    /* ── Features ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color .2s, transform .2s;
+    }
+    .feature-card:hover { border-color: var(--border-md); transform: translateY(-2px); }
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 16px;
+    }
+    .feature-icon.cyan  { background: rgba(6,182,212,0.12); }
+    .feature-icon.green { background: rgba(34,197,94,0.12);  }
+    .feature-icon.blue  { background: rgba(59,130,246,0.12); }
+    .feature-icon.purple{ background: rgba(167,139,250,0.12);}
+    .feature-card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 8px; color: #fff; }
+    .feature-card p  { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── Architecture ── */
+    .arch-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 48px 32px;
+      overflow-x: auto;
+    }
+    .arch-diagram {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      min-width: 600px;
+    }
+    .arch-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+    }
+    .arch-box {
+      border-radius: var(--radius-sm);
+      padding: 12px 20px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .arch-box.ide    { background: rgba(6,182,212,0.1);  border: 1px solid rgba(6,182,212,0.4);  color: #67e8f9; }
+    .arch-box.proxy  { background: rgba(167,139,250,0.1);border: 1px solid rgba(167,139,250,0.4);color: #c4b5fd; min-width: 200px; }
+    .arch-box.db     { background: rgba(71,85,105,0.2);  border: 1px solid rgba(71,85,105,0.5);  color: #94a3b8; font-size: 0.78rem; }
+    .arch-box.local  { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.4);  color: #86efac; }
+    .arch-box.model  { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; font-family: 'JetBrains Mono',monospace; font-size: 0.78rem; }
+    .arch-box.cloud  { background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3); color: #fdba74; font-size: 0.82rem; }
+    .arch-label { font-size: 0.72rem; color: var(--text-dim); margin-top: 4px; }
+    .arch-arrow-v {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 6px 0; color: var(--text-dim); font-size: 0.75rem; gap: 2px;
+    }
+    .arch-arrow-v .line { width: 1px; height: 24px; background: var(--border-md); }
+    .arch-arrow-v .tip  { color: var(--accent); }
+    .arch-split {
+      display: flex; gap: 32px; align-items: flex-start; justify-content: center; width: 100%;
+    }
+    .arch-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .arch-col-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+    .arch-connector { font-size: 0.75rem; color: var(--text-dim); padding: 0 12px; margin-top: 20px; }
+    .arch-col-arrow { width: 1px; height: 20px; background: var(--border-md); }
+    .arch-db-row { display: flex; align-items: center; gap: 8px; }
+    .arch-db-label { font-size: 0.72rem; color: var(--text-dim); }
+
+    /* ── Quick start ── */
+    .steps { display: flex; flex-direction: column; gap: 24px; }
+    .step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .step-num {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(6,182,212,0.12);
+      border: 1px solid rgba(6,182,212,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-weight: 600; color: var(--accent);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-content h3 { font-size: 1rem; font-weight: 600; color: #fff; margin-bottom: 10px; }
+    .step-content p  { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; }
+    pre {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 20px;
+      overflow-x: auto;
+      position: relative;
+    }
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .comment { color: var(--text-dim); }
+    .cmd     { color: var(--accent); }
+    .arg     { color: #86efac; }
+    .cline-table {
+      width: 100%; border-collapse: collapse; margin-top: 12px;
+    }
+    .cline-table th {
+      text-align: left; padding: 8px 12px;
+      font-size: 0.8rem; color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+    .cline-table td {
+      padding: 8px 12px; font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .cline-table td:first-child { color: var(--text-muted); }
+    .cline-table td code { background: rgba(6,182,212,0.08); padding: 2px 6px; border-radius: 4px; }
+
+    /* ── Models ── */
+    .models-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+      gap: 24px;
+    }
+    .model-group {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .model-group-header {
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .model-group-header .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .model-group-header h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
+    .model-group-header p  { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+    .model-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .model-row:last-child { border-bottom: none; }
+    .model-row:hover { background: rgba(255,255,255,0.02); }
+    .model-name { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text); }
+    .model-tag  {
+      font-size: 0.72rem; padding: 2px 8px; border-radius: 999px;
+      font-weight: 500;
+    }
+    .tag-green  { background: rgba(34,197,94,0.12);  color: #86efac; }
+    .tag-blue   { background: rgba(59,130,246,0.12); color: #93c5fd; }
+    .tag-purple { background: rgba(167,139,250,0.12);color: #c4b5fd; }
+    .tag-orange { background: rgba(249,115,22,0.12); color: #fdba74; }
+    .model-note { font-size: 0.78rem; color: var(--text-dim); text-align: right; }
+
+    /* ── Requirements ── */
+    .req-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .req-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .req-card h4 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .req-card p  { font-size: 1rem; font-weight: 600; color: #fff; }
+    .req-card .note { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; font-weight: 400; }
+    .ram-table { width: 100%; border-collapse: collapse; }
+    .ram-table th {
+      text-align: left; padding: 10px 14px;
+      font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+    }
+    .ram-table td { padding: 12px 14px; font-size: 0.85rem; border-bottom: 1px solid var(--border); }
+    .ram-table tr:last-child td { border-bottom: none; }
+    .ram-table td:first-child { font-family: 'JetBrains Mono',monospace; color: var(--text); }
+    .ram-table td:nth-child(2) { color: var(--text-muted); }
+    .ram-table td:nth-child(3) { color: var(--text-muted); }
+    .ram-table .rec { color: var(--green); font-weight: 500; }
+    .ram-table .warn { color: var(--orange); }
+    .ram-table .na  { color: var(--text-dim); }
+    .ram-table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .ram-table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem; font-weight: 600; color: #fff;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+    }
+    .footer-inner {
+      max-width: 1100px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-left { display: flex; flex-direction: column; gap: 4px; }
+    .footer-logo { font-weight: 700; font-size: 1rem; color: #fff; }
+    .footer-logo .acc { color: var(--accent); }
+    .footer-copy { font-size: 0.8rem; color: var(--text-dim); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 0.85rem; color: var(--text-muted); text-decoration: none; transition: color .2s; }
+    .footer-links a:hover { color: var(--text); }
+
+    /* ── Divider ── */
+    hr.divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .nav-links a:not(.nav-gh) { display: none; }
+      .models-grid { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 40px 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">Local<span class="acc">AI</span></a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">Architecture</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#models">Models</a>
+      <a href="https://github.com/k-trimbuddhimatta/localai" class="nav-gh" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ──────────────────────────────────────────────────────────────── -->
+<section class="hero" id="top">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      v0.1.0 alpha &nbsp;·&nbsp; MIT License
+    </div>
+    <h1>Local AI infrastructure<br>for <span class="acc">developers</span></h1>
+    <p class="hero-sub">
+      Unified proxy for local and cloud LLMs. One endpoint. Offline-first.<br>
+      Automatic fallback when internet is unavailable.
+    </p>
+    <div class="hero-actions">
+      <a href="#quickstart" class="btn-primary">Get started</a>
+      <a href="https://github.com/k-trimbuddhimatta/localai" class="btn-outline" target="_blank">View on GitHub</a>
+    </div>
+    <div class="hero-chips">
+      <span class="chip">🍎 Apple Silicon &amp; Metal GPU</span>
+      <span class="chip">🐳 Docker Compose</span>
+      <span class="chip">🔌 OpenAI-compatible API</span>
+      <span class="chip">🔒 Keys never leave your machine</span>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── Features ──────────────────────────────────────────────────────────── -->
+<section class="section" id="features">
+  <div class="container">
+    <h2 class="section-title">Everything in one stack</h2>
+    <p class="section-sub">No per-tool configuration. No multiple API keys to manage in your IDE.</p>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon cyan">🌐</div>
+        <h3>Offline-first</h3>
+        <p>Local models run via Ollama with Apple Metal GPU acceleration. Keep working when your internet is down — no cloud dependency for day-to-day coding.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon green">🔀</div>
+        <h3>Automatic fallback</h3>
+        <p>If a local model fails or is unavailable, LiteLLM silently escalates to the next provider: Anthropic → OpenAI → Gemini. Fully transparent to your IDE.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon blue">🔌</div>
+        <h3>One endpoint for everything</h3>
+        <p><code style="background:rgba(6,182,212,0.1);padding:2px 6px;border-radius:4px;font-family:monospace">localhost:4000</code> works with Cline, curl, Python scripts, or any OpenAI-compatible client. Switch models without reconfiguring your tools.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon purple">📊</div>
+        <h3>Built-in spend tracking</h3>
+        <p>LiteLLM's web UI at <code style="background:rgba(167,139,250,0.1);padding:2px 6px;border-radius:4px;font-family:monospace">localhost:4000/ui</code> shows token usage, spend by provider, request logs, and virtual API keys with spending limits.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon cyan">🧙</div>
+        <h3>Interactive setup wizard</h3>
+        <p>Run <code style="background:rgba(6,182,212,0.1);padding:2px 6px;border-radius:4px;font-family:monospace">bash setup.sh</code> — it detects your RAM, shows which models fit your hardware, walks you through provider selection and generates your <code style="font-family:monospace">.env</code> automatically.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon green">🔍</div>
+        <h3>Pre-flight checker</h3>
+        <p>Run <code style="background:rgba(34,197,94,0.1);padding:2px 6px;border-radius:4px;font-family:monospace">bash check.sh</code> before setup to verify RAM, disk space, Docker, Ollama, port availability, and model compatibility — all in one report.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── Architecture ───────────────────────────────────────────────────────── -->
+<section class="section" id="how-it-works">
+  <div class="container">
+    <h2 class="section-title">How it works</h2>
+    <p class="section-sub">One proxy, multiple backends. Your IDE talks to LiteLLM; LiteLLM routes to wherever makes sense.</p>
+    <div class="arch-wrapper">
+      <div class="arch-diagram">
+
+        <!-- IDE row -->
+        <div class="arch-row">
+          <div>
+            <div class="arch-box ide">VS Code + Cline</div>
+            <div class="arch-label" style="text-align:center">OpenAI-compatible request</div>
+          </div>
+        </div>
+
+        <!-- Arrow down -->
+        <div class="arch-arrow-v">
+          <div class="line"></div>
+          <div class="tip">▼</div>
+        </div>
+
+        <!-- LiteLLM + Postgres row -->
+        <div class="arch-row" style="gap:32px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div class="arch-box proxy">LiteLLM Proxy &nbsp;:4000</div>
+            <div class="arch-label">routing · fallbacks · auth · spend tracking</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div class="arch-box db">PostgreSQL</div>
+            <div class="arch-label">logs · keys · spend</div>
+          </div>
+        </div>
+
+        <!-- Arrows split -->
+        <div style="display:flex;justify-content:center;gap:120px;padding:6px 0">
+          <div class="arch-arrow-v"><div class="line"></div><div class="tip" style="color:var(--green)">▼</div></div>
+          <div class="arch-arrow-v"><div class="line"></div><div class="tip" style="color:var(--orange)">▼</div></div>
+        </div>
+
+        <!-- Local + Cloud columns -->
+        <div class="arch-split">
+          <div class="arch-col">
+            <div class="arch-col-label" style="color:var(--green)">Local (macOS native)</div>
+            <div class="arch-box local">Ollama &nbsp;:11434</div>
+            <div class="arch-col-arrow" style="background:rgba(34,197,94,0.3)"></div>
+            <div class="arch-box model">qwen2.5-coder:14b</div>
+            <div class="arch-box model" style="opacity:.7">llama3.1:8b</div>
+          </div>
+          <div class="arch-connector" style="margin-top:60px">fallback →</div>
+          <div class="arch-col">
+            <div class="arch-col-label" style="color:var(--orange)">Cloud providers</div>
+            <div class="arch-box cloud">Anthropic — Claude Sonnet / Opus</div>
+            <div class="arch-box cloud" style="opacity:.85">OpenAI — GPT-4o / mini</div>
+            <div class="arch-box cloud" style="opacity:.7">Google — Gemini 2.5 Flash / Pro</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── Quick start ────────────────────────────────────────────────────────── -->
+<section class="section" id="quickstart">
+  <div class="container">
+    <h2 class="section-title">Quick start</h2>
+    <p class="section-sub">From zero to a running local AI stack in under 5 minutes.</p>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Clone the repository</h3>
+          <pre><code><span class="cmd">git clone</span> <span class="arg">https://github.com/k-trimbuddhimatta/localai.git</span>
+<span class="cmd">cd</span> localai</code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Check your system <span style="font-size:.8rem;color:var(--text-dim);font-weight:400">(recommended)</span></h3>
+          <p>Verifies hardware compatibility and shows which local models fit your RAM.</p>
+          <pre><code><span class="cmd">bash</span> check.sh</code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Run the setup wizard</h3>
+          <p>Walks you through provider selection, API keys, model download and starts the Docker stack.</p>
+          <pre><code><span class="cmd">bash</span> setup.sh
+
+<span class="comment"># The wizard will ask:</span>
+<span class="comment">#   — Which cloud providers to configure (Anthropic / OpenAI / Google / none)</span>
+<span class="comment">#   — API keys for each selected provider</span>
+<span class="comment">#   — Which local model to download (filtered to your RAM)</span>
+<span class="comment">#   Generates .env and starts Docker automatically.</span></code></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Configure Cline in VS Code</h3>
+          <p>Open Cline → gear icon ⚙️ → API Configuration and fill in:</p>
+          <table class="cline-table">
+            <tr><th>Field</th><th>Value</th></tr>
+            <tr><td>API Provider</td><td><code>OpenAI Compatible</code></td></tr>
+            <tr><td>Base URL</td><td><code>http://localhost:4000</code></td></tr>
+            <tr><td>API Key</td><td><code>your LITELLM_MASTER_KEY</code> (shown at end of setup.sh)</td></tr>
+            <tr><td>Model</td><td><code>claude-sonnet-4-6</code> (recommended for agent mode)</td></tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── Models ─────────────────────────────────────────────────────────────── -->
+<section class="section" id="models">
+  <div class="container">
+    <h2 class="section-title">Available models</h2>
+    <p class="section-sub">All models are available through a single endpoint. Switch by changing the model name in Cline.</p>
+    <div class="models-grid">
+
+      <div class="model-group">
+        <div class="model-group-header">
+          <span class="dot" style="background:var(--green)"></span>
+          <div>
+            <h3>Local — Ollama</h3>
+            <p>Runs on your Mac · Free · Works offline · Apple Metal GPU</p>
+          </div>
+        </div>
+        <div class="model-row">
+          <span class="model-name">qwen2.5-coder:14b</span>
+          <span class="model-tag tag-green">Recommended</span>
+          <span class="model-note">16 GB+ RAM · ~9 GB</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">qwen2.5-coder:7b</span>
+          <span class="model-tag tag-blue">Lightweight</span>
+          <span class="model-note">8 GB+ RAM · ~5 GB</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">llama3.1:8b</span>
+          <span class="model-tag tag-blue">General</span>
+          <span class="model-note">8 GB+ RAM · ~5 GB</span>
+        </div>
+      </div>
+
+      <div class="model-group">
+        <div class="model-group-header">
+          <span class="dot" style="background:var(--orange)"></span>
+          <div>
+            <h3>Cloud — via LiteLLM</h3>
+            <p>Requires API key · Best for agent mode · Automatic fallback target</p>
+          </div>
+        </div>
+        <div class="model-row">
+          <span class="model-name">claude-sonnet-4-6</span>
+          <span class="model-tag tag-purple">Agent mode</span>
+          <span class="model-note">Anthropic</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">claude-opus-4-8</span>
+          <span class="model-tag tag-purple">Most capable</span>
+          <span class="model-note">Anthropic</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">gpt-4o</span>
+          <span class="model-tag tag-blue">General</span>
+          <span class="model-note">OpenAI</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">gpt-4o-mini</span>
+          <span class="model-tag tag-blue">Fast</span>
+          <span class="model-note">OpenAI</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">gemini-2.5-flash</span>
+          <span class="model-tag tag-orange">Multimodal</span>
+          <span class="model-note">Google</span>
+        </div>
+        <div class="model-row">
+          <span class="model-name">gemini-2.5-pro</span>
+          <span class="model-tag tag-orange">Pro</span>
+          <span class="model-note">Google</span>
+        </div>
+      </div>
+
+    </div>
+    <p style="margin-top:16px;font-size:0.82rem;color:var(--text-dim)">
+      Additional Ollama models can be pulled with <code style="font-family:monospace;background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:4px">ollama pull &lt;model&gt;</code> and registered in <code style="font-family:monospace;background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:4px">litellm/config.yaml</code>.
+    </p>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ── Requirements ───────────────────────────────────────────────────────── -->
+<section class="section-sm" id="requirements">
+  <div class="container">
+    <h2 class="section-title">Requirements</h2>
+    <p class="section-sub">Designed for macOS with Apple Silicon. Intel Macs work but models run on CPU (slower).</p>
+
+    <div class="req-grid">
+      <div class="req-card">
+        <h4>Operating system</h4>
+        <p>macOS 13+</p>
+        <p class="note">Apple Silicon (M1–M5) recommended</p>
+      </div>
+      <div class="req-card">
+        <h4>Docker Desktop</h4>
+        <p>Version 4.x+</p>
+        <p class="note">Must be running before setup.sh</p>
+      </div>
+      <div class="req-card">
+        <h4>Ollama</h4>
+        <p>Any recent version</p>
+        <p class="note">Install from ollama.com</p>
+      </div>
+      <div class="req-card">
+        <h4>RAM (minimum)</h4>
+        <p>8 GB</p>
+        <p class="note">16 GB+ recommended for 14b models</p>
+      </div>
+    </div>
+
+    <div class="ram-table-wrap">
+      <div class="ram-table-header">RAM requirements per local model</div>
+      <table class="ram-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Size on disk</th>
+            <th>Min RAM</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>qwen2.5-coder:7b</td>
+            <td>~5 GB</td>
+            <td>8 GB</td>
+            <td class="warn">Works on 16 GB Macs; leave other apps closed</td>
+          </tr>
+          <tr>
+            <td>qwen2.5-coder:14b</td>
+            <td>~9 GB</td>
+            <td>16 GB</td>
+            <td class="rec">Recommended — best quality for 24+ GB systems</td>
+          </tr>
+          <tr>
+            <td>qwen2.5-coder:32b</td>
+            <td>~20 GB</td>
+            <td>32 GB</td>
+            <td>High-spec machines only</td>
+          </tr>
+          <tr>
+            <td>llama3.1:8b</td>
+            <td>~5 GB</td>
+            <td>8 GB</td>
+            <td>General purpose, not code-specialised</td>
+          </tr>
+          <tr>
+            <td>llama3.1:70b</td>
+            <td>~40 GB</td>
+            <td>64 GB</td>
+            <td class="na">Not viable on consumer hardware</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px;font-size:0.8rem;color:var(--text-dim)">
+      On Apple Silicon, unified memory means all RAM is available for models (no separate VRAM limit). If a model doesn't fit, Ollama falls back to swap — 10–50× slower and effectively unusable. Run <code style="font-family:monospace;background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:4px">bash check.sh</code> to see exactly which models are compatible with your machine.
+    </p>
+  </div>
+</section>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-left">
+      <span class="footer-logo">Local<span class="acc">AI</span> Stack</span>
+      <span class="footer-copy">MIT License · Built for the developer community</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/k-trimbuddhimatta/localai" target="_blank">GitHub</a>
+      <a href="https://github.com/k-trimbuddhimatta/localai/releases" target="_blank">Releases</a>
+      <a href="https://github.com/k-trimbuddhimatta/localai/issues" target="_blank">Issues</a>
+      <a href="https://github.com/k-trimbuddhimatta/localai/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
